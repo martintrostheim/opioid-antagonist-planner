@@ -22,7 +22,9 @@ ui <- fluidPage(
       h4("Study info"),
       numericInput("n_participants", "Number of participants", value=1, min=1, max=NA),
       numericInput("n_sessions", "Number of naloxone sessions", value=1, min=1, max=NA),
+      numericInput("price", "Price per 0.4 mg/ml vial or ampoule", value=NA, min=0, max=NA),
       htmlOutput("text_naloxone_amount"),
+      htmlOutput("text_cost"),
       h4("Plot settings"),
       sliderInput("resolution", "Curve resolution (dots per minute)", value=10, step=1, min=1, max=100),
       checkboxInput("showDOR", "Show DOR blockade", value=FALSE),
@@ -142,26 +144,6 @@ server <- function(input, output, session) {
     DF[info_drug_Unit()=="mg/kg/h"] <- info_drug_Dose()[info_drug_Unit()=="mg/kg/h"] / 60 * info_drug_Duration()[info_drug_Unit()=="mg/kg/h"]
     DF
   })
-  
-  # info_drug_Dose_adj <- reactive({
-  #   DF <- rep(NA, length(info_drug_Dose()))
-  #   for(i in 1:length(info_drug_Dose())){
-  #     if(info_drug_Unit()[i] == "mg"){
-  #       DF[i] <- info_drug_Dose()[i]/input$kg
-  #       } else if(info_drug_Unit()[i] == "mg/kg"){
-  #         DF[i] <- info_drug_Dose()[i]
-  #       } else if(info_drug_Unit()[i] == "mg/min"){
-  #         DF[i] <- info_drug_Dose()[i]/input$kg*info_drug_Duration()[i]
-  #       } else if(info_drug_Unit()[i] == "mg/kg/min"){
-  #         DF[i] <- info_drug_Dose()[i]*info_drug_Duration()[i]
-  #       } else if(info_drug_Unit()[i] == "mg/h"){
-  #         DF[i] <- info_drug_Dose()[i]/input$kg/60*info_drug_Duration()[i]
-  #       } else if(info_drug_Unit()[i] == "mg/kg/h"){
-  #         DF[i] <- info_drug_Dose()[i]/60*info_drug_Duration()[i]
-  #       }
-  #   }
-  #   DF
-  # })
   
   # Convert dose to blockade at administration time point, assuming no absorption
   info_drug_Blockade_MOR <- reactive({MOR.Blockade.0(Dose=info_drug_Dose_adj())})
@@ -398,15 +380,24 @@ output$Plot <- renderPlotly({
   output$text_naloxone_amount <- renderText({
     text_amount <- "Naloxone dose per participant per session: "
     text_amount_total <- "Total amount of naloxone needed for this study: "
-    if(input_check()==6 & isTruthy(input$n_participants) & input$n_participants > 0){
+    if(input_check()==6 & isTruthy(input$n_participants) & isTruthy(input$n_sessions)){
       amount <- sum(info_drug_Dose_adj())
+      amount_total <- amount*input$n_participants*input$n_sessions*input$kg
       text_amount <- paste0(text_amount, round(amount,5), " mg/kg (", round(amount*input$kg,5), " mg)")
-      if(isTruthy(input$n_sessions) & input$n_sessions > 0){
-        amount_total <- amount*input$n_participants*input$n_sessions*input$kg
-        text_amount_total <- paste0(text_amount_total, round(amount_total,5), " mg")
-      }
+      text_amount_total <- paste0(text_amount_total, round(amount_total,5), " mg")
     }
     paste0(text_amount, "<br>", text_amount_total)
+  })
+  
+  output$text_cost <- renderText({
+    text_cost_total <- "Total cost for this study: "
+    if(input_check()==6 & isTruthy(input$n_participants) & isTruthy(input$n_sessions) & isTruthy(input$price)){
+      price <- input$price/0.4
+      cost <- sum(info_drug_Dose_adj()) * price * input$kg
+      cost_total <- cost*input$n_participants*input$n_sessions
+      text_cost_total <- paste0(text_cost_total, round(cost_total,5))
+    }
+    paste0(text_cost_total)
   })
   
   # Warning
@@ -419,7 +410,7 @@ output$Plot <- renderPlotly({
     paste0("<b>Citation</b><br>",
            "[Reference to preprint/paper]<br>",
            "<br><b>Source</b><br>",
-           "[Link to GitHub repository]<br>",
+           '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
            '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a>')
   })

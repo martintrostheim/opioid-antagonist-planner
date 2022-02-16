@@ -10,7 +10,9 @@ ui <- fluidPage(
       h4("Study info"),
       numericInput("n_participants", "Number of participants", value=1, min=1, max=NA),
       numericInput("n_sessions", "Number of naltrexone sessions", value=1, min=1, max=NA),
+      numericInput("price", "Price per 50 mg tablet", value=NA, min=0, max=NA),
       htmlOutput("text_naltrexone_amount"),
+      htmlOutput("text_cost"),
       h4("Recommendations"),
       htmlOutput("text_recommendations"),
       hr(),
@@ -62,6 +64,18 @@ server <- function(input, output, session) {
       text_tablets <- paste0(text_tablets, tablets)
     }
     paste0(text_mg, "<br>", text_tablets)
+  })
+  
+  # Cost
+  output$text_cost <- renderText({
+    text_cost_total <- "Total cost: "
+    if(isTruthy(input$Dose) & isTruthy(input$n_participants) & isTruthy(input$n_sessions) & isTruthy(input$price)){
+      mg <- (input$Dose*input$n_participants*input$n_sessions)
+      tablets <- ceiling(mg/50)
+      cost_total <- tablets*input$price
+      text_cost_total <- paste0(text_cost_total, cost_total)
+    }
+    paste0(text_cost_total)
   })
   
   # Recommendations
@@ -201,7 +215,7 @@ server <- function(input, output, session) {
     paste0("<b>Citation</b><br>",
            "[Reference to preprint/paper]<br>",
            "<br><b>Source</b><br>",
-           "[Link to GitHub repository]<br>",
+           '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
            '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a>')
   })
