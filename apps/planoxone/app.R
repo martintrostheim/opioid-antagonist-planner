@@ -27,9 +27,8 @@ ui <- fluidPage(
       htmlOutput("text_cost"),
       h4("Plot settings"),
       sliderInput("resolution", "Curve resolution (dots per minute)", value=10, step=1, min=1, max=100),
-      checkboxInput("showDOR", "Show DOR blockade", value=FALSE),
-      checkboxInput("showKOR", "Show KOR blockade", value=FALSE),
-      htmlOutput("text_warning"),
+      checkboxInput("showDOR", "Simulate DOR blockade", value=FALSE),
+      checkboxInput("showKOR", "Simulate KOR blockade", value=FALSE),
       checkboxInput("truncate", "Limit blockade to 0-100%", value=TRUE),
       hr(),
       htmlOutput("text_citation"),
@@ -400,16 +399,12 @@ output$Plot <- renderPlotly({
     paste0(text_cost_total)
   })
   
-  # Warning
-  output$text_warning <- renderText({
-    '<font color=\"#FF0000\">Warning! DOR and KOR blockade are approximated from MOR blockade based on the affinity of naloxone to these receptors relative to MOR.</font>'
-  })
-  
   # Citation
   output$text_citation <- renderText({
-    paste0("<b>Citation</b><br>",
-           "[Reference to preprint/paper]<br>",
-           "<br><b>Source</b><br>",
+    paste0("<b>Preprint</b><br>",
+           #'Tr\u00f8stheim, M., Eikemo, M., Haaker, J., Frost, J. J., and Leknes, S. (2022). Opioid Antagonism in Humans: A Primer on Optimal Dose and Timing for Central Mu-Opioid Receptor Blockade. <i>bioRxiv</i>, 2022.02.25.481943. <a href="https://doi.org/10.1101/2022.02.25.481943">https://doi.org/10.1101/2022.02.25.481943</a><br>',
+           '<a href="https://doi.org/10.1101/2022.02.25.481943">Tr\u00f8stheim et al. (2022, <i>bioRxiv</i>)</a></br>',
+           "<br><b>Source code</b><br>",
            '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
            '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a>')

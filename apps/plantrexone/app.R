@@ -18,9 +18,8 @@ ui <- fluidPage(
       hr(),
       h4("Plot settings"),
       sliderInput("resolution", "Curve resolution (dots per minute)", value=10, step=1, min=1, max=100),
-      checkboxInput("showDOR", "Show DOR blockade", value=FALSE),
-      checkboxInput("showKOR", "Show KOR blockade", value=FALSE),
-      htmlOutput("text_warning"),
+      checkboxInput("showDOR", "Simulate DOR blockade", value=FALSE),
+      checkboxInput("showKOR", "Simulate KOR blockade", value=FALSE),
       hr(),
       htmlOutput("text_citation"),
       hr(),
@@ -40,18 +39,6 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   options(scipen = 999)
-  
-  output$text_warning <- renderText({
-    note <- 'Note: '
-    text <- 'DOR and KOR blockade are approximated from MOR blockade based on the affinity of naloxone to these receptors relative to MOR.'
-    if(input$showDOR == TRUE | input$showKOR == TRUE){
-      text <- paste0('<font color=\"#FF0000\">Warning! ', text, '</font>')
-    } else{
-      text <- paste0(note, text)
-    }
-    text
-  })
-  
   
   # Total naltrexone amount needed
   output$text_naltrexone_amount <- renderText({
@@ -213,8 +200,8 @@ server <- function(input, output, session) {
   # Citation
   output$text_citation <- renderText({
     paste0("<b>Citation</b><br>",
-           "[Reference to preprint/paper]<br>",
-           "<br><b>Source</b><br>",
+           '<a href="https://doi.org/10.1101/2022.02.25.481943">Tr\u00f8stheim et al. (2022, <i>bioRxiv</i>)</a></br>',
+           "<br><b>Source code</b><br>",
            '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
            '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a>')
