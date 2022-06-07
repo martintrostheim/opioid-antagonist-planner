@@ -111,15 +111,16 @@ server <- function(input, output, session) {
   # Drug administration
   df_drug <- data.frame(Time = c(0, rep(NA_integer_, 14)),
                    Dose = c(0.4, rep(NA_integer_, 14)),
-                   Unit = factor(c("mg", rep(NA_character_, 14)), levels=c("mg", "mg/kg", "mg/min", "mg/kg/min", "mg/h", "mg/kg/h")), 
+                   Unit = factor(c("mg", rep(NA_character_, 14)), levels=c("mg", "mg/kg", "mg/min", "mg/kg/min", "mg/h", "mg/kg/h",
+                                                                           "mcg", "mcg/kg", "mcg/min", "mcg/kg/min", "mcg/h", "mcg/kg/h")), 
                    Duration = c(0, rep(NA_integer_, 14)),
                    stringsAsFactors = FALSE)
   
   output$table_drug <- renderRHandsontable({rhandsontable(df_drug,
-                                                          colHeaders=c('<p title="Time point of IV naloxone administration (minutes)">Time</p>',
+                                                          colHeaders=c('<p title="Time point of IV naloxone administration (minutes)">Time<br>(minutes)</p>',
                                                                        '<p title="IV naloxone dose">Dose</p>',
-                                                                       '<p title="IV naloxone dose unit (mg, mg/kg, mg/min, mg/kg/min, mg/h or mg/kg/h)">Unit</p>',
-                                                                       '<p title="Infusion duration (minutes). Set to 0 for bolus">Duration</p>')) %>%
+                                                                       '<p title="IV naloxone dose unit (mg, mg/kg, mg/min, mg/kg/min, mg/h, mg/kg/h, mcg, mcg/kg, mcg/min, mcg/kg/min, mcg/h or mcg/kg/h)">Dose unit</p>',
+                                                                       '<p title="Infusion duration (minutes). Set to 0 for bolus">Duration<br>(minutes)</p>')) %>%
       hot_col(2, format="0.00000")})
   
   info_drug <- reactive({
@@ -141,6 +142,13 @@ server <- function(input, output, session) {
     DF[info_drug_Unit()=="mg/kg/min"] <- info_drug_Dose()[info_drug_Unit()=="mg/kg/min"] * info_drug_Duration()[info_drug_Unit()=="mg/kg/min"]
     DF[info_drug_Unit()=="mg/h"] <- info_drug_Dose()[info_drug_Unit()=="mg/h"] / input$kg / 60 * info_drug_Duration()[info_drug_Unit()=="mg/h"]
     DF[info_drug_Unit()=="mg/kg/h"] <- info_drug_Dose()[info_drug_Unit()=="mg/kg/h"] / 60 * info_drug_Duration()[info_drug_Unit()=="mg/kg/h"]
+    
+    DF[info_drug_Unit()=="mcg"] <- info_drug_Dose()[info_drug_Unit()=="mcg"] / input$kg / 1000
+    DF[info_drug_Unit()=="mcg/kg"] <- info_drug_Dose()[info_drug_Unit()=="mcg/kg"] / 1000
+    DF[info_drug_Unit()=="mcg/min"] <- info_drug_Dose()[info_drug_Unit()=="mcg/min"] / input$kg / 1000 * info_drug_Duration()[info_drug_Unit()=="mcg/min"]
+    DF[info_drug_Unit()=="mcg/kg/min"] <- info_drug_Dose()[info_drug_Unit()=="mcg/kg/min"] / 1000 * info_drug_Duration()[info_drug_Unit()=="mcg/kg/min"]
+    DF[info_drug_Unit()=="mcg/h"] <- info_drug_Dose()[info_drug_Unit()=="mcg/h"] / input$kg / 60 / 1000 * info_drug_Duration()[info_drug_Unit()=="mcg/h"]
+    DF[info_drug_Unit()=="mcg/kg/h"] <- info_drug_Dose()[info_drug_Unit()=="mcg/kg/h"] / 60 / 1000 * info_drug_Duration()[info_drug_Unit()=="mcg/kg/h"]
     DF
   })
   
@@ -336,7 +344,7 @@ output$Plot <- renderPlotly({
   # Download
   output$download_curve <- downloadHandler(
     filename <- function() {
-      paste0("data-curve_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
+      paste0("planoxone_data-curve_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
     },
     content <- function(file) {
       write.csv(data(), file, row.names=FALSE)
@@ -344,7 +352,7 @@ output$Plot <- renderPlotly({
 
   output$download_dose <- downloadHandler(
     filename <- function() {
-      paste0("data-dose_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
+      paste0("planoxone_data-dose_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
     },
     content <- function(file) {
       write.csv(info_drug(), file, row.names=FALSE)
@@ -352,7 +360,7 @@ output$Plot <- renderPlotly({
 
   output$download_outcome <- downloadHandler(
     filename <- function() {
-      paste0("data-outcome_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
+      paste0("planoxone_data-outcome_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
     },
     content <- function(file) {
       write.csv(info_measure(), file, row.names=FALSE)
