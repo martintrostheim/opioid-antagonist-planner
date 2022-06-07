@@ -117,6 +117,7 @@ server <- function(input, output, session) {
                    stringsAsFactors = FALSE)
   
   output$table_drug <- renderRHandsontable({rhandsontable(df_drug,
+                                                          stretchH='all',
                                                           colHeaders=c('<p title="Time point of IV naloxone administration (minutes)">Time<br>(minutes)</p>',
                                                                        '<p title="IV naloxone dose">Dose</p>',
                                                                        '<p title="IV naloxone dose unit (mg, mg/kg, mg/min, mg/kg/min, mg/h, mg/kg/h, mcg, mcg/kg, mcg/min, mcg/kg/min, mcg/h or mcg/kg/h)">Dose unit</p>',
@@ -309,6 +310,7 @@ output$Plot <- renderPlotly({
   })
   
   output$table_measure <- renderRHandsontable({rhandsontable(df_measure_changes(),
+                                                             stretchH='all',
                                                              colHeaders=c('<p title="Name of outcome measure">Measure</p>',
                                                                           '<p title="Start time of outcome assessment (minutes)">Start</p>',
                                                                           '<p title="End time of outcome assessment (minutes)">End</p>',
