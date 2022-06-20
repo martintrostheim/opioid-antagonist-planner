@@ -20,6 +20,10 @@ ui <- fluidPage(
       sliderInput("resolution", "Curve resolution (dots per minute)", value=10, step=1, min=1, max=100),
       checkboxInput("showDOR", "Simulate DOR blockade", value=FALSE),
       checkboxInput("showKOR", "Simulate KOR blockade", value=FALSE),
+      h4("Model parameters"),
+      numericInput("MOR.ED50", "ED50 MOR (mg)", value=5.59, min=0, max=NA),
+      numericInput("DOR.ratio", "MOR:DOR affinity ratio (1:X)", value=79, min=0, max=NA),
+      numericInput("KOR.ratio", "MOR:KOR affinity ratio (1:X)", value=2, min=0, max=NA),
       hr(),
       htmlOutput("text_citation"),
       hr(),
@@ -74,24 +78,32 @@ server <- function(input, output, session) {
   })
   
   # Dose-blockade curves
-  MOR.ED50 <- 5.59 # ED50 from Rabiner et al. (2011)
-  DOR.ED50 <- MOR.ED50*79
-  KOR.ED50 <- MOR.ED50*2
+  checkDOR <- reactive({
+    check <- (isTruthy(input$DOR.ratio) & (input$showDOR == TRUE))
+  })
   
-  f.MOR <- function(dose){return(dose/(dose+MOR.ED50)*100)}
-  f.DOR <- function(dose){return(dose/(dose+DOR.ED50)*100)}
-  f.KOR <- function(dose){return(dose/(dose+KOR.ED50)*100)}
+  checkKOR <- reactive({
+    check <- (isTruthy(input$KOR.ratio) & (input$showKOR == TRUE))
+  }) 
+  
+  #MOR.ED50 <- 5.59 # ED50 from Rabiner et al. (2011)
+  DOR.ED50 <- reactive({input$MOR.ED50*input$DOR.ratio})
+  KOR.ED50 <- reactive({input$MOR.ED50*input$KOR.ratio})
+  
+  f.MOR <- function(dose, MOR.ED50){return(dose/(dose+MOR.ED50)*100)}
+  f.DOR <- function(dose, DOR.ED50){return(dose/(dose+DOR.ED50)*100)}
+  f.KOR <- function(dose, KOR.ED50){return(dose/(dose+KOR.ED50)*100)}
   
   dose <- reactive({10^seq(-2, 3, input$resolution^-1)})
   
   data <- reactive({
-    Receptors <- data.frame(Dose=dose(), Receptor=rep("MOR", length(dose())), Blockade=f.MOR(dose=dose()))
-    if(input$showDOR == TRUE){
-      DOR <- data.frame(Dose=dose(), Receptor=rep("DOR", length(dose())), Blockade=f.DOR(dose=dose()))
+    Receptors <- data.frame(Dose=dose(), Receptor=rep("MOR", length(dose())), Blockade=f.MOR(dose=dose(), MOR.ED50=input$MOR.ED50))
+    if(checkDOR() == TRUE){
+      DOR <- data.frame(Dose=dose(), Receptor=rep("DOR", length(dose())), Blockade=f.DOR(dose=dose(), DOR.ED50=DOR.ED50()))
       Receptors <- rbind(Receptors, DOR)
     }
-    if(input$showKOR == TRUE){
-      KOR <- data.frame(Dose=dose(), Receptor=rep("KOR", length(dose())), Blockade=f.KOR(dose=dose()))
+    if(checkKOR() == TRUE){
+      KOR <- data.frame(Dose=dose(), Receptor=rep("KOR", length(dose())), Blockade=f.KOR(dose=dose(), KOR.ED50=KOR.ED50()))
       Receptors <- rbind(Receptors, KOR)
     }
     Receptors
@@ -107,16 +119,16 @@ server <- function(input, output, session) {
       theme_bw()+
       theme(plot.title = element_text(hjust = 0.5))
     
-    if(input$showDOR == TRUE & input$showKOR == FALSE){
+    if(checkDOR() == TRUE & checkKOR() == FALSE){
       p <- p+
         scale_color_manual(name="Receptor", values=c("MOR"="black", "DOR"="red"), breaks=c("MOR", "DOR"))
-    } else if(input$showDOR == FALSE & input$showKOR == TRUE){
+    } else if(checkDOR() == FALSE & checkKOR() == TRUE){
       p <- p+
         scale_color_manual(name="Receptor", values=c("MOR"="black", "KOR"="blue"), breaks=c("MOR", "KOR"))
-    } else if(input$showDOR == TRUE & input$showKOR == TRUE){
+    } else if(checkDOR() == TRUE & checkKOR() == TRUE){
       p <- p+
         scale_color_manual(name="Receptor", values=c("MOR"="black", "DOR"="red", "KOR"="blue"), breaks=c("MOR", "DOR", "KOR"))
-    } else if(input$showDOR == FALSE & input$showKOR == FALSE){
+    } else if(checkDOR() == FALSE & checkKOR() == FALSE){
       p <- p+
         scale_color_manual(name="Receptor", values=c("MOR"="black"), breaks=c("MOR"))
     }
@@ -140,13 +152,13 @@ server <- function(input, output, session) {
       Dose <- input$Dose
     )
     
-    Receptors <- data.frame(Dose=Dose, Receptor="MOR", Blockade=round(f.MOR(dose=Dose)))
-    if(input$showDOR == TRUE){
-      DOR <- data.frame(Dose=Dose, Receptor="DOR", Blockade=round(f.DOR(dose=Dose)))
+    Receptors <- data.frame(Dose=Dose, Receptor="MOR", Blockade=round(f.MOR(dose=Dose, MOR.ED50=input$MOR.ED50)))
+    if(checkDOR() == TRUE){
+      DOR <- data.frame(Dose=Dose, Receptor="DOR", Blockade=round(f.DOR(dose=Dose, DOR.ED50=DOR.ED50())))
       Receptors <- rbind(Receptors, DOR)
     }
-    if(input$showKOR == TRUE){
-      KOR <- data.frame(Dose=Dose, Receptor="KOR", Blockade=round(f.KOR(dose=Dose)))
+    if(checkKOR() == TRUE){
+      KOR <- data.frame(Dose=Dose, Receptor="KOR", Blockade=round(f.KOR(dose=Dose, KOR.ED50=KOR.ED50())))
       Receptors <- rbind(Receptors, KOR)
     }
     Receptors
@@ -164,13 +176,13 @@ server <- function(input, output, session) {
       #scale_fill_manual(name="Receptor", values=c("MOR"="black", "DOR"="red", "KOR"="blue"), breaks=c("MOR", "DOR", "KOR"))+
       scale_y_continuous(breaks=seq(0,100,25), limits=c(0,110))
     
-    if(input$showDOR + input$showKOR == 0){
+    if(checkDOR() + checkKOR() == 0){
       p <- p+
         geom_bar(stat="identity", width=0.5/3)
-    } else if(input$showDOR + input$showKOR == 1){
+    } else if(checkDOR() + checkKOR() == 1){
       p <- p+
         geom_bar(stat="identity", width=0.5/2)
-    } else if(input$showDOR + input$showKOR == 2){
+    } else if(checkDOR() + checkKOR() == 2){
       p <- p+
         geom_bar(stat="identity", width=0.5)
     }
@@ -180,16 +192,16 @@ server <- function(input, output, session) {
         geom_text(aes(label=paste0(Blockade, "%")), vjust=-1)
     }
 
-    if(input$showDOR == TRUE & input$showKOR == FALSE){
+    if(checkDOR() == TRUE & checkKOR() == FALSE){
       p <- p+
         scale_fill_manual(name="Receptor", values=c("MOR"="black", "DOR"="red"), breaks=c("MOR", "DOR"))
-    } else if(input$showDOR == FALSE & input$showKOR == TRUE){
+    } else if(checkDOR() == FALSE & checkKOR() == TRUE){
       p <- p+
         scale_fill_manual(name="Receptor", values=c("MOR"="black", "KOR"="blue"), breaks=c("MOR", "KOR"))
-    } else if(input$showDOR == TRUE & input$showKOR == TRUE){
+    } else if(checkDOR() == TRUE & checkKOR() == TRUE){
       p <- p+
         scale_fill_manual(name="Receptor", values=c("MOR"="black", "DOR"="red", "KOR"="blue"), breaks=c("MOR", "DOR", "KOR"))
-    } else if(input$showDOR == FALSE & input$showKOR == FALSE){
+    } else if(checkDOR() == FALSE & checkKOR() == FALSE){
       p <- p+
         scale_fill_manual(name="Receptor", values=c("MOR"="black"), breaks=c("MOR"))
     }

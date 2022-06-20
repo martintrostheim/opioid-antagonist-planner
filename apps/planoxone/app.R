@@ -30,6 +30,12 @@ ui <- fluidPage(
       checkboxInput("showDOR", "Simulate DOR blockade", value=FALSE),
       checkboxInput("showKOR", "Simulate KOR blockade", value=FALSE),
       checkboxInput("truncate", "Limit blockade to 0-100%", value=TRUE),
+      h4("Model parameters"),
+      numericInput("MOR.ED50", "ED50 MOR (mg/kg)", value=0.002290758, min=0, max=NA),
+      numericInput("T.max", "Blockade tmax (minutes)", value=25, min=0, max=NA),
+      numericInput("Halflife", "Blockade half-life (minutes)", value=110, min=0, max=NA),
+      numericInput("DOR.ratio", "MOR:DOR affinity ratio (1:X)", value=41, min=0, max=NA),
+      numericInput("KOR.ratio", "MOR:KOR affinity ratio (1:X)", value=8, min=0, max=NA),
       hr(),
       htmlOutput("text_citation"),
       hr(),
@@ -65,44 +71,40 @@ server <- function(input, output, session) {
   
   # Model from paper
   T.measurement <- 55
-  T.max <- 25
-  Halflife <- 110
+  #T.max <- 25
+  #Halflife <- 110
   
   # MOR
-  MOR.loglogit.b <- -1
-  MOR.loglogit.c <- 0
-  MOR.loglogit.d <- 100
-  MOR.loglogit.e <- 0.002290758
-  MOR.ED50 <- MOR.loglogit.e
+  #MOR.ED50 <- 0.002290758
   
   # DOR
-  DOR.ratio <- 41
-  DOR.ED50 <- MOR.ED50*DOR.ratio
+  #DOR.ratio <- 41
+  DOR.ED50 <- reactive({input$MOR.ED50*input$DOR.ratio})
   
   # KOR
-  KOR.ratio <- 8
-  KOR.ED50 <- MOR.ED50*KOR.ratio
+  #KOR.ratio <- 8
+  KOR.ED50 <- reactive({input$MOR.ED50*input$KOR.ratio})
   
 
-  k <- k <- log(0.5)/(-Halflife)
-  ka <- -1/T.max * lambertWn(-T.max*k*exp(-T.max*k))
+  k <- reactive({log(2)/input$Halflife})
+  ka <- reactive({-1/input$T.max * lambertWn(-input$T.max*k()*exp(-input$T.max*k()))})
   vc <- 1
-  cl <- k*vc
+  cl <- reactive({k()*vc})
   
   # Blockade curves
-  MOR.Blockade.0 <- function(Dose){
+  MOR.Blockade.0 <- function(Dose, MOR.ED50, k, T.measurement){
     #output <- (MOR.loglogit.c +(MOR.loglogit.d-MOR.loglogit.c)/(1+(Dose/MOR.loglogit.e)^MOR.loglogit.b)) * exp(-k*(0-T.measurement))
     output <- ((Dose*100)/(Dose+MOR.ED50)) * exp(-k*(0-T.measurement))
     return(output)
   }
   
-  DOR.Blockade.0 <- function(Dose){
+  DOR.Blockade.0 <- function(Dose, DOR.ED50, k, T.measurement){
     #output <- (DOR.loglogit.c +(DOR.loglogit.d-DOR.loglogit.c)/(1+(Dose/DOR.loglogit.e)^DOR.loglogit.b)) * exp(-k*(0-T.measurement))
     output <- ((Dose*100)/(Dose+DOR.ED50)) * exp(-k*(0-T.measurement))
     return(output)
   }
   
-  KOR.Blockade.0 <- function(Dose){
+  KOR.Blockade.0 <- function(Dose, KOR.ED50, k, T.measurement){
     #output <- (KOR.loglogit.c +(KOR.loglogit.d-KOR.loglogit.c)/(1+(Dose/KOR.loglogit.e)^KOR.loglogit.b)) * exp(-k*(0-T.measurement))
     output <- ((Dose*100)/(Dose+KOR.ED50)) * exp(-k*(0-T.measurement))
     return(output)
@@ -154,9 +156,9 @@ server <- function(input, output, session) {
   })
   
   # Convert dose to blockade at administration time point, assuming no absorption
-  info_drug_Blockade_MOR <- reactive({MOR.Blockade.0(Dose=info_drug_Dose_adj())})
-  info_drug_Blockade_DOR <- reactive({DOR.Blockade.0(Dose=info_drug_Dose_adj())})
-  info_drug_Blockade_KOR <- reactive({KOR.Blockade.0(Dose=info_drug_Dose_adj())})
+  info_drug_Blockade_MOR <- reactive({MOR.Blockade.0(Dose=info_drug_Dose_adj(), MOR.ED50=input$MOR.ED50, k=k(), T.measurement=T.measurement)})
+  info_drug_Blockade_DOR <- reactive({DOR.Blockade.0(Dose=info_drug_Dose_adj(), DOR.ED50=DOR.ED50(), k=k(), T.measurement=T.measurement)})
+  info_drug_Blockade_KOR <- reactive({KOR.Blockade.0(Dose=info_drug_Dose_adj(), KOR.ED50=KOR.ED50(), k=k(), T.measurement=T.measurement)})
   
   
   output$text_drug <- renderText({
@@ -173,18 +175,23 @@ server <- function(input, output, session) {
                  isTruthy(info_drug_Dose()), 
                  isTruthy(info_drug_Time()),
                  isTruthy(info_drug_Duration()),
-                 isTruthy(info_drug_Unit()))
+                 isTruthy(info_drug_Unit()),
+                 isTruthy(input$MOR.ED50),
+                 isTruthy(input$T.max),
+                 isTruthy(input$Halflife),
+                 isTruthy(input$DOR.ratio),
+                 isTruthy(input$KOR.ratio))
   })  
 
     x <- reactive({
-      if(input_check() == 6){
+      if(input_check() == 11){
         seq(0 ,input$Session*60, input$resolution^-1)
         }
       })
     
     y.MOR <- reactive({
-      if(input_check() == 6){
-        y <- as.data.frame(pkprofile(x(), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_MOR(), dur=info_drug_Duration())))$conc
+      if(input_check() == 11){
+        y <- as.data.frame(pkprofile(x(), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_MOR(), dur=info_drug_Duration())))$conc
         if(input$truncate == TRUE){
           y <- ifelse(y > 100, 100, y)
           }
@@ -193,8 +200,8 @@ server <- function(input, output, session) {
       })
     
     y.DOR <- reactive({
-      if(input_check() == 6){
-        y <- as.data.frame(pkprofile(x(), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_DOR(), dur=info_drug_Duration())))$conc
+      if(input_check() == 11){
+        y <- as.data.frame(pkprofile(x(), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_DOR(), dur=info_drug_Duration())))$conc
         if(input$truncate == TRUE){
           y <- ifelse(y > 100, 100, y)
         }
@@ -203,8 +210,8 @@ server <- function(input, output, session) {
     })
     
     y.KOR <- reactive({
-      if(input_check() == 6){
-        y <- as.data.frame(pkprofile(x(), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_KOR(), dur=info_drug_Duration())))$conc
+      if(input_check() == 11){
+        y <- as.data.frame(pkprofile(x(), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_KOR(), dur=info_drug_Duration())))$conc
         if(input$truncate == TRUE){
           y <- ifelse(y > 100, 100, y)
         }
@@ -213,7 +220,7 @@ server <- function(input, output, session) {
     })
     
     data <- reactive({
-      if(input_check() == 6){
+      if(input_check() == 11){
         data.frame(minutes=x(), MOR=y.MOR(), DOR=y.DOR(), KOR=y.KOR())
       } else{
         data.frame(minutes=NA, MOR=NA, DOR=NA, KOR=NA)
@@ -246,7 +253,7 @@ output$Plot <- renderPlotly({
       xlim(0, input$Session*60)
   }
   
-  if(input_check() == 6){
+  if(input_check() == 11){
     if(nrow(rect_measure()) > 0){
       p <- p+
         geom_rect(aes(xmin=rect_measure()$Start, xmax=rect_measure()$End, ymin=rect_measure()$ymin, ymax=rect_measure()$ymax), fill=alpha("blue", 0.1), color=alpha("blue", 0.3))+
@@ -287,10 +294,10 @@ output$Plot <- renderPlotly({
       DF <- hot_to_r(input$table_measure)
       # here the second column is a function of the first and it will be multipled by 100 given the values in the first column
       for(i in 1:nrow(DF)){
-        if(!is.na(DF$Start[i]) & !is.na(DF$End[i]) & DF$Start[i] <= DF$End[i] & input_check() == 6){
-          MOR <- as.data.frame(pkprofile(seq(DF$Start[i], DF$End[i], input$resolution^-1), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_MOR(), dur=info_drug_Duration())))$conc
-          DOR <- as.data.frame(pkprofile(seq(DF$Start[i], DF$End[i], input$resolution^-1), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_DOR(), dur=info_drug_Duration())))$conc
-          KOR <- as.data.frame(pkprofile(seq(DF$Start[i], DF$End[i], input$resolution^-1), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_KOR(), dur=info_drug_Duration())))$conc
+        if(!is.na(DF$Start[i]) & !is.na(DF$End[i]) & DF$Start[i] <= DF$End[i] & input_check() == 11){
+          MOR <- as.data.frame(pkprofile(seq(DF$Start[i], DF$End[i], input$resolution^-1), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_MOR(), dur=info_drug_Duration())))$conc
+          DOR <- as.data.frame(pkprofile(seq(DF$Start[i], DF$End[i], input$resolution^-1), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_DOR(), dur=info_drug_Duration())))$conc
+          KOR <- as.data.frame(pkprofile(seq(DF$Start[i], DF$End[i], input$resolution^-1), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_KOR(), dur=info_drug_Duration())))$conc
           if(input$truncate == TRUE){
             MOR <- ifelse(MOR > 100, 100, MOR)
             DOR <- ifelse(DOR > 100, 100, DOR)
@@ -371,8 +378,8 @@ output$Plot <- renderPlotly({
   # Inter-session interval
   output$text_washout <- renderText({
     text <- "Residual MOR blockade at next session: "
-    if(input_check() == 6 & isTruthy(input$Washout)){
-      Blockade.wash <- mean(as.data.frame(pkprofile(c(input$Session*60+input$Washout*60), cl=cl, vc=vc, ka=ka, dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_MOR(), dur=info_drug_Duration())))$conc)
+    if(input_check() == 11 & isTruthy(input$Washout)){
+      Blockade.wash <- mean(as.data.frame(pkprofile(c(input$Session*60+input$Washout*60), cl=cl(), vc=vc, ka=ka(), dose=list(t.dose=info_drug_Time(), amt=info_drug_Blockade_MOR(), dur=info_drug_Duration())))$conc)
       if(input$truncate == TRUE & Blockade.wash > 100){
         Blockade.wash <- 100
       }
@@ -382,14 +389,14 @@ output$Plot <- renderPlotly({
   })
   
   output$text_recommended <- renderText({
-    Washout.recommended <- c(5, 10)*Halflife/60
+    Washout.recommended <- c(5, 10)*input$Halflife/60
     paste0("Recommended minimum intersession interval: ", round(min(Washout.recommended),1), "-", round(max(Washout.recommended),1), " hours")
   })
   
   output$text_naloxone_amount <- renderText({
     text_amount <- "Naloxone dose per participant per session: "
     text_amount_total <- "Total amount of naloxone needed for this study: "
-    if(input_check()==6 & isTruthy(input$n_participants) & isTruthy(input$n_sessions)){
+    if(input_check()==11 & isTruthy(input$n_participants) & isTruthy(input$n_sessions)){
       amount <- sum(info_drug_Dose_adj())
       amount_total <- amount*input$n_participants*input$n_sessions*input$kg
       text_amount <- paste0(text_amount, round(amount,5), " mg/kg (", round(amount*input$kg,5), " mg)")
@@ -400,7 +407,7 @@ output$Plot <- renderPlotly({
   
   output$text_cost <- renderText({
     text_cost_total <- "Total cost for this study: "
-    if(input_check()==6 & isTruthy(input$n_participants) & isTruthy(input$n_sessions) & isTruthy(input$price)){
+    if(input_check()==11 & isTruthy(input$n_participants) & isTruthy(input$n_sessions) & isTruthy(input$price)){
       price <- input$price/0.4
       cost <- sum(info_drug_Dose_adj()) * price * input$kg
       cost_total <- cost*input$n_participants*input$n_sessions
