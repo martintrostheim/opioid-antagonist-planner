@@ -20,10 +20,6 @@ ui <- fluidPage(
       sliderInput("resolution", "Curve resolution (dots per minute)", value=10, step=1, min=1, max=100),
       checkboxInput("showDOR", "Simulate DOR blockade", value=FALSE),
       checkboxInput("showKOR", "Simulate KOR blockade", value=FALSE),
-      h4("Model parameters"),
-      numericInput("MOR.ED50", "ED50 MOR (mg)", value=5.59, min=0, max=NA),
-      numericInput("DOR.ratio", "MOR:DOR affinity ratio (1:X)", value=79, min=0, max=NA),
-      numericInput("KOR.ratio", "MOR:KOR affinity ratio (1:X)", value=2, min=0, max=NA),
       hr(),
       htmlOutput("text_citation"),
       hr(),
@@ -31,11 +27,20 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      plotOutput("Plot"),
-      hr(),
-      downloadButton("download_curve", "Download dose-blockade curve"),
-      hr(),
-      plotOutput("Plot_bar")
+      tabsetPanel(type="tabs",
+                  tabPanel("Main",
+                           plotOutput("Plot"),
+                           hr(),
+                           downloadButton("download_curve", "Download dose-blockade curve"),
+                           hr(),
+                           plotOutput("Plot_bar")),
+                  tabPanel("Model parameters",
+                           h4("Model parameters"),
+                           numericInput("MOR.ED50", "ED50 MOR blockade (mg)", value=5.592841, min=0, max=NA),
+                           numericInput("DOR.ratio", "MOR:DOR affinity ratio (1:X)", value=79, min=0, max=NA),
+                           numericInput("KOR.ratio", "MOR:KOR affinity ratio (1:X)", value=2, min=0, max=NA)
+                           )
+                  )
     )
   )
   

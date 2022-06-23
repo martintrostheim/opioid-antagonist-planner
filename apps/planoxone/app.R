@@ -30,12 +30,6 @@ ui <- fluidPage(
       checkboxInput("showDOR", "Simulate DOR blockade", value=FALSE),
       checkboxInput("showKOR", "Simulate KOR blockade", value=FALSE),
       checkboxInput("truncate", "Limit blockade to 0-100%", value=TRUE),
-      h4("Model parameters"),
-      numericInput("MOR.ED50", "ED50 MOR (mg/kg)", value=0.002290758, min=0, max=NA),
-      numericInput("T.max", "Blockade tmax (minutes)", value=25, min=0, max=NA),
-      numericInput("Halflife", "Blockade half-life (minutes)", value=110, min=0, max=NA),
-      numericInput("DOR.ratio", "MOR:DOR affinity ratio (1:X)", value=41, min=0, max=NA),
-      numericInput("KOR.ratio", "MOR:KOR affinity ratio (1:X)", value=8, min=0, max=NA),
       hr(),
       htmlOutput("text_citation"),
       hr(),
@@ -43,25 +37,35 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      plotlyOutput("Plot"),
-      hr(),
-      downloadButton("download_curve", "Download blockade-time profile"),
-      hr(),
-      
-      fluidRow(
-        column(6,
-               h4("Drug administration"),
-               rHandsontableOutput("table_drug"),
-               htmlOutput("text_drug"),
-               downloadButton("download_dose", "Download drug administration info")
-               ),
-        column(6,
-               h4("Outcome assessment"),
-               rHandsontableOutput("table_measure"),
-               htmlOutput("text_measure"),
-               downloadButton("download_outcome", "Download outcome assessment info")
-               )
-      )
+      tabsetPanel(type="tabs",
+                  tabPanel("Main",
+                           plotlyOutput("Plot"),
+                           hr(),
+                           downloadButton("download_curve", "Download blockade-time profile"),
+                           hr(),
+                           
+                           fluidRow(
+                             column(6,
+                                    h4("Drug administration"),
+                                    rHandsontableOutput("table_drug"),
+                                    htmlOutput("text_drug"),
+                                    downloadButton("download_dose", "Download drug administration info")
+                             ),
+                             column(6,
+                                    h4("Outcome assessment"),
+                                    rHandsontableOutput("table_measure"),
+                                    htmlOutput("text_measure"),
+                                    downloadButton("download_outcome", "Download outcome assessment info")
+                             )
+                           )),
+                  tabPanel("Model parameters",
+                           h4("Model parameters"),
+                           numericInput("MOR.ED50", "ED50 MOR blockade (mg/kg)", value=0.002290531, min=0, max=NA),
+                           numericInput("T.max", "Blockade tmax (minutes)", value=25, min=0, max=NA),
+                           numericInput("Halflife", "Blockade half-life (minutes)", value=110, min=0, max=NA),
+                           numericInput("DOR.ratio", "MOR:DOR affinity ratio (1:X)", value=41, min=0, max=NA),
+                           numericInput("KOR.ratio", "MOR:KOR affinity ratio (1:X)", value=8, min=0, max=NA))
+                  )
     )
   )
 )  
@@ -321,9 +325,9 @@ output$Plot <- renderPlotly({
                                                              colHeaders=c('<p title="Name of outcome measure">Measure</p>',
                                                                           '<p title="Start time of outcome assessment (minutes)">Start</p>',
                                                                           '<p title="End time of outcome assessment (minutes)">End</p>',
-                                                                          '<p title="Average MOR blockade (%)">MOR</p>',
-                                                                          '<p title="Average DOR blockade (%)">DOR</p>',
-                                                                          '<p title="Average KOR blockade (%)">KOR</p>'))})
+                                                                          '<p title="Average MOR blockade (%)">MOR<br>blockade</p>',
+                                                                          '<p title="Average DOR blockade (%)">DOR<br>blockade</p>',
+                                                                          '<p title="Average KOR blockade (%)">KOR<br>blockade</p>'))})
   
   output$text_measure <- renderText({
     paste0("Measure = Measurement name<br>",
