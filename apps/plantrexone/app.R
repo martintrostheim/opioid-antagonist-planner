@@ -216,8 +216,8 @@ server <- function(input, output, session) {
   
   # Citation
   output$text_citation <- renderText({
-    paste0("<b>Citation</b><br>",
-           '<a href="https://doi.org/10.1101/2022.02.25.481943">Tr\u00f8stheim et al. (2022, <i>bioRxiv</i>)</a></br>',
+    paste0("<b>Article (Open Access)</b><br>",
+           '<a href="https://doi.org/10.1038/s41386-022-01416-z">Tr\u00f8stheim et al. (2022, <i>Neuropsychopharmacology</i>)</a></br>',
            "<br><b>Source code</b><br>",
            '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
