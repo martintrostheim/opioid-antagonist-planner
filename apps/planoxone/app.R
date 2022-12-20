@@ -428,7 +428,8 @@ output$Plot <- renderPlotly({
            "<br><b>Source code</b><br>",
            '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
-           '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a>')
+           '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a><br>',
+           '<a href="https://martintrostheim.shinyapps.io/plantrexone/">Plantrexone</a>')
   })
   
   # Credits and affiliations

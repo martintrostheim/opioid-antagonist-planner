@@ -23,7 +23,8 @@ ui <- fluidPage(
       hr(),
       htmlOutput("text_citation"),
       hr(),
-      textOutput("text_credits")
+      textOutput("text_credits"),
+      htmlOutput("text_rabiner")
     ),
     
     mainPanel(
@@ -120,7 +121,7 @@ server <- function(input, output, session) {
       geom_line(data=data(), aes(x=log10(Dose), y=Blockade, color=Receptor))+
       ylim(0,100)+
       scale_x_continuous(breaks=-2:3, labels=10^(-2:3), sec.axis=dup_axis(labels=-2:3, name="log10(Dose [mg])"))+
-      labs(x="Dose (mg)", y="Blockade (%)", title="Opioid Receptor Blockade with PO Naltrexone (t < 8 hours)")+
+      labs(x="Dose (mg)", y="Blockade (%)", title="Opioid Receptor Blockade within 8 Hours of Administration of PO Naltrexone")+
       theme_bw()+
       theme(plot.title = element_text(hjust = 0.5))
     
@@ -171,8 +172,8 @@ server <- function(input, output, session) {
   
   output$Plot_bar <- renderPlot({
     title <- ifelse(isTruthy(input$Dose),
-                    paste0("Opioid Receptor Blockade with ", input$Dose, " mg PO Naltrexone (t < 8 hours)"),
-                    "Opioid Receptor Blockade with PO Naltrexone (t < 8 hours)")
+                    paste0("Opioid Receptor Blockade within 8 Hours of Administration of ", input$Dose, " mg PO Naltrexone"),
+                    "Opioid Receptor Blockade within 8 Hours of Administration of PO Naltrexone")
     
     p <- ggplot(data=res(), aes(x=factor(Receptor, level=c("MOR", "DOR", "KOR")), y=Blockade, fill=Receptor))+
       labs(x="Receptor", y="Blockade (%)", title=title)+
@@ -221,12 +222,17 @@ server <- function(input, output, session) {
            "<br><b>Source code</b><br>",
            '<a href="https://github.com/martintrostheim/opioid-antagonist-planner">GitHub</a><br>',
            "<br><b>Links</b><br>",
-           '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a>')
+           '<a href="https://sirileknes.com/">Leknes Affective Brain Lab</a><br>',
+           '<a href="https://martintrostheim.shinyapps.io/planoxone/">Planoxone</a>')
   })
   
   # Credits and affiliations
   output$text_credits <- renderText({
     "Developed by Martin Tr\u00f8stheim"
+  })
+  
+  output$text_rabiner <- renderText({
+    '<br>Based on data in <a href="https://doi.org/10.1038/mp.2011.29">Rabiner et al. (2011, <i>Mol. Psychiatry</i>)</a>'
   })
   
 }
